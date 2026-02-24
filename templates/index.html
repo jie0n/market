@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>FastAPI 게시글 CRUD + 1:1 채팅 + 신고</title>
+</head>
+<body>
+
+<h1>회원가입</h1>
+<form id="register-form">
+    <input type="text" id="reg-username" placeholder="아이디" required>
+    <input type="password" id="reg-password" placeholder="비밀번호" required>
+    <button type="submit">회원가입</button>
+</form>
+
+<hr>
+
+<h1>로그인</h1>
+<form id="login-form">
+    <input type="text" name="username" placeholder="아이디" required>
+    <input type="password" name="password" placeholder="비밀번호" required>
+    <button type="submit">로그인</button>
+</form>
+
+<p id="login-status">로그아웃 상태</p>
+<button id="logout-btn" type="button">로그아웃</button>
+
+<hr>
+
+<h1>게시글 작성</h1>
+<form id="post-form" enctype="multipart/form-data">
+    <input type="text" name="title" placeholder="제목" required><br><br>
+    <textarea name="content" placeholder="내용" required></textarea><br><br>
+    <input type="file" name="image" accept="image/*"><br><br>
+    <button type="submit">작성</button>
+</form>
+
+<hr>
+
+<h1>게시글 수정</h1>
+<form id="edit-form" enctype="multipart/form-data">
+    <input type="hidden" id="edit-post-id">
+    <input type="text" id="edit-title" placeholder="제목" required><br><br>
+    <textarea id="edit-content" placeholder="내용" required></textarea><br><br>
+    <input type="file" id="edit-image" accept="image/*"><br><br>
+    <button type="submit">수정</button>
+</form>
+
+<hr>
+
+<h2>게시글 목록</h2>
+<button onclick="loadPosts()">목록 불러오기</button>
+<button onclick="loadMyReports()">신고내역 보기</button>
+<ul id="post-list"></ul>
+
+<hr>
+
+<h3>내 신고 내역</h3>
+<ul id="report-list"></ul>
+
+<hr>
+
+<h2>1:1 채팅</h2>
+<select id="chat-user">
+    <option value="">--대화할 상대 선택--</option>
+</select>
+
+<div id="chat-box" style="border:1px solid #ccc; height:300px; overflow-y:auto; margin-top:10px; padding:5px;"></div>
+
+<input type="text" id="chat-input" placeholder="메시지 입력">
+<button type="button" id="send-btn">전송</button>
+<button type="button" id="report-chat-user-btn">현재 대화 상대 신고</button>
+
+<script>
+const registerForm = document.getElementById('register-form');
+const loginForm = document.getElementById('login-form');
+const postForm = document.getElementById('post-form');
+const editForm = document.getElementById('edit-form');
+const loginStatus = document.getElementById('login-status');
+const postList = document.getElementById('post-list');
+const logoutBtn = document.getElementById('logout-btn');
+const chatUserSelect = document.getElementById("chat-user");
+const chatBox = document.getElementById("chat-box");
+const chatInput = document.getElementById("chat-input");
+const sendBtn = document.getElementById("send-btn");
+const reportChatUserBtn = document.getElementById("report-chat-user-btn");
+
+function getToken() {
+    return localStorage.getItem('token');
+}
+
+/* 회원가입 */
+registerForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = document.getElementById('reg-username').value;
+    const password = document.getElementById('reg-password').value;
+
+    const res = await fetch('/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ username, password })
+    });
+
+    alert(res.ok ? '회원가입 성공' : '회원가입 실패');
+    registerForm.reset();
+});
+
+/* 로그인 */
+loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const res = await fetch('/auth/login', {
+        method: 'POST',
+        body: new FormData(loginForm)
+    });
+
+    if (!res.ok) {
+        loginStatus.textContent = '로그인 실패';
+        return;
+    }
+
+    const data = await res.json();
+    localStorage.setItem('token', data.access_token);
+    loginStatus.textContent = '로그인 상태';
+
+    loadPosts();
+    loadUsers();
+});
+
+/* 로그아웃 */
+logoutBtn.addEventListener('click', () => {
+    localStorage.removeItem('token');
+    loginStatus.textContent = '로그아웃 상태';
+});
+
+/* 게시글 작성 */
+postForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const token = getToken();
+    if (!token) { alert('로그인이 필요합니다'); return; }
+
+    const res = await fetch('/posts', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + token },
+        body: new FormData(postForm)
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) { 
+        alert(data.detail || '작성 실패');  // 🔥 여기서 서버 메시지 표시
+        return; 
+    }
+
+    postForm.reset();
+    loadPosts();
+});
+
+/* 게시글 수정 */
+editForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const token = getToken();
+    const postId = document.getElementById('edit-post-id').value;
+    if (!token || !postId) return;
+
+    const formData = new FormData();
+    formData.append('title', document.getElementById('edit-title').value);
+    formData.append('content', document.getElementById('edit-content').value);
+
+    const imageInput = document.getElementById('edit-image');
+    if (imageInput.files.length > 0)
+        formData.append('image', imageInput.files[0]);
+
+    const res = await fetch('/posts/' + postId, {
+        method: 'PUT',
+        headers: { Authorization: 'Bearer ' + token },
+        body: formData
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) { 
+        alert(data.detail || '수정 실패'); 
+        return; 
+    }
+
+    alert('수정 완료');
+    editForm.reset();
+    loadPosts();
+});
+
+/* 게시글 삭제 */
+async function deletePost(postId) {
+    const token = getToken();
+    if (!token) return;
+
+    const res = await fetch('/posts/' + postId, {
+        method: 'DELETE',
+        headers: { Authorization: 'Bearer ' + token }
+    });
+
+    if (!res.ok) { 
+        const data = await res.json();
+        alert(data.detail || '삭제 실패'); 
+        return; 
+    }
+
+    loadPosts();
+}
+
+/* 게시글 목록 */
+async function loadPosts() {
+    const res = await fetch('/posts');
+    const posts = await res.json();
+    postList.innerHTML = '';
+
+    posts.forEach(post => {
+        const li = document.createElement('li');
+        li.innerHTML = `
+            <strong>${post.title}</strong> - 작성자: ${post.username}<br>
+            ${post.content}<br>
+            ${post.image_path ? `<img src="${post.image_path}" width="200"><br>` : ''}
+        `;
+
+        const chatBtn = document.createElement('button');
+        chatBtn.textContent = '채팅하기';
+        chatBtn.type = "button";
+        chatBtn.onclick = () => {
+            chatUserSelect.value = post.user_id;
+            loadChat(post.user_id);
+        };
+
+        const editBtn = document.createElement('button');
+        editBtn.textContent = '수정';
+        editBtn.type = "button";
+        editBtn.onclick = () => {
+            document.getElementById('edit-post-id').value = post.id;
+            document.getElementById('edit-title').value = post.title;
+            document.getElementById('edit-content').value = post.content;
+        };
+
+        const delBtn = document.createElement('button');
+        delBtn.textContent = '삭제';
+        delBtn.type = "button";
+        delBtn.onclick = () => deletePost(post.id);
+
+        const reportBtn = document.createElement('button');
+        reportBtn.textContent = '신고';
+        reportBtn.type = "button";
+        reportBtn.onclick = async () => {
+            const token = getToken();
+            if (!token) { alert('로그인이 필요합니다'); return; }
+
+            const reason = prompt("신고 사유를 입력하세요:");
+            if (!reason) return;
+
+            const res = await fetch(`/posts/${post.id}/report`, {
+                method: "POST",
+                headers: {
+                    Authorization: "Bearer " + token,
+                    "Content-Type": "application/x-www-form-urlencoded"
+                },
+                body: new URLSearchParams({ reason })
+            });
+
+            const data = await res.json();
+            if (!res.ok) { alert(data.detail || "신고 실패"); return; }
+            alert("신고 접수 완료");
+        };
+
+        li.append(chatBtn, editBtn, delBtn, reportBtn);
+        postList.appendChild(li);
+    });
+}
+
+/* 신고 내역 */
+async function loadMyReports() {
+    const token = getToken();
+    if (!token) { 
+        alert("로그인이 필요합니다"); 
+        return; 
+    }
+
+    const res = await fetch('/posts/reports/my', {
+        headers: { Authorization: 'Bearer ' + token }
+    });
+
+    if (!res.ok) { 
+        alert("불러오기 실패"); 
+        return; 
+    }
+
+    const reports = await res.json();
+
+    const postsRes = await fetch('/posts');
+    const posts = await postsRes.json();
+
+    const usersRes = await fetch('/users', {
+        headers: { Authorization: 'Bearer ' + token }
+    });
+
+    let users = [];
+    if (usersRes.ok) {
+        users = await usersRes.json();
+    }
+
+    const reportList = document.getElementById("report-list");
+    reportList.innerHTML = "";
+
+    reports.forEach(r => {
+        const li = document.createElement("li");
+
+        let postText = "채팅 신고";
+        if (r.post_id) {
+            const matchedPost = posts.find(p => p.id === r.post_id);
+            postText = matchedPost ? `게시글: ${matchedPost.title}` : "삭제된 게시글";
+        }
+
+        let reportedUsername = "알 수 없음";
+        const matchedUser = users.find(u => u.id === r.reported_user_id);
+        if (matchedUser) reportedUsername = matchedUser.username;
+
+        li.innerHTML = `
+            ${postText} /
+            신고대상: ${reportedUsername}<br>
+            사유: ${r.reason}<br>
+            날짜: ${r.created_at}
+        `;
+
+        reportList.appendChild(li);
+    });
+}
+
+/* 유저 목록 */
+async function loadUsers() {
+    const token = getToken();
+    if (!token) return;
+
+    const res = await fetch('/users', {
+        headers: { Authorization: 'Bearer ' + token }
+    });
+
+    if (!res.ok) return;
+
+    const users = await res.json();
+    chatUserSelect.innerHTML = '<option value="">--대화할 상대 선택--</option>';
+
+    users.forEach(user => {
+        const option = document.createElement("option");
+        option.value = user.id;
+        option.textContent = user.username;
+        chatUserSelect.appendChild(option);
+    });
+}
+
+/* 채팅 불러오기 */
+async function loadChat(userId) {
+    const token = getToken();
+    if (!token) { alert("로그인이 필요합니다"); return; }
+
+    const res = await fetch(`/chat/${userId}`, {
+        headers: { Authorization: "Bearer " + token }
+    });
+
+    if (!res.ok) { alert("채팅 불러오기 실패"); return; }
+
+    const messages = await res.json();
+    chatBox.innerHTML = "";
+
+    messages.forEach(msg => {
+        const div = document.createElement("div");
+        div.style.marginBottom = "5px";
+        div.textContent = msg.sender_username + " : " + msg.content;
+        chatBox.appendChild(div);
+    });
+
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+/* 채팅 전송 */
+sendBtn.addEventListener("click", async () => {
+    const token = getToken();
+    const receiverId = chatUserSelect.value;
+    const content = chatInput.value.trim();
+
+    if (!token) { alert("로그인이 필요합니다"); return; }
+    if (!receiverId) { alert("대화 상대 선택"); return; }
+    if (!content) return;
+
+    const res = await fetch(`/chat/${receiverId}`, {
+        method: "POST",
+        headers: {
+            Authorization: "Bearer " + token,
+            "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: new URLSearchParams({ content })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) { alert(data.detail || "전송 실패"); return; } // 🔥 서버 메시지 표시
+
+    chatInput.value = "";
+    loadChat(receiverId);
+});
+
+/* 채팅 상대 신고 */
+reportChatUserBtn.addEventListener("click", async () => {
+    const token = getToken();
+    const targetUserId = chatUserSelect.value;
+
+    if (!token) { alert("로그인이 필요합니다"); return; }
+    if (!targetUserId) { alert("대화 상대를 선택하세요"); return; }
+
+    const reason = prompt("신고 사유를 입력하세요:");
+    if (!reason) return;
+
+    const res = await fetch(`/chat/report/${targetUserId}`, {
+        method: "POST",
+        headers: {
+            Authorization: "Bearer " + token,
+            "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: new URLSearchParams({ reason })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) { alert(data.detail || "신고 실패"); return; }
+    alert("채팅 유저 신고 완료");
+});
+
+/* 유저 선택 시 채팅 자동 불러오기 */
+chatUserSelect.addEventListener("change", () => {
+    const userId = chatUserSelect.value;
+    if (userId) loadChat(userId);
+});
+
+window.onload = () => {
+    loginStatus.textContent = getToken() ? '로그인 상태' : '로그아웃 상태';
+    loadPosts();
+    if (getToken()) loadUsers();
+};
+</script>
+
+</body>
+</html>
