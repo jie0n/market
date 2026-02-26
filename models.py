@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
@@ -7,13 +7,23 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    username = Column(String(50), unique=True, nullable=False)
-    password = Column(String(255), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    nickname = Column(String(50), unique=True, nullable=False)
+    email = Column(String(100), unique=True, nullable=False)
+    phone = Column(String(20), nullable=False)
+    password = Column(String(200), nullable=False)
+    is_verified = Column(Boolean, default=False)
 
-    posts = relationship("Post", back_populates="author")
+    posts = relationship("Post", back_populates="author")  # ← Post.author와 연결
     sent_messages = relationship("Message", foreign_keys='Message.sender_id', back_populates="sender")
     received_messages = relationship("Message", foreign_keys='Message.receiver_id', back_populates="receiver")
+
+
+class EmailVerification(Base):
+    __tablename__ = "email_verifications"
+
+    id = Column(Integer, primary_key=True)
+    email = Column(String(100), index=True)
+    code = Column(String(6))
 
 
 class Post(Base):
@@ -25,7 +35,7 @@ class Post(Base):
     image_path = Column(String(255), nullable=True)
     user_id = Column(Integer, ForeignKey("users.id"))
 
-    author = relationship("User", back_populates="posts")
+    author = relationship("User", back_populates="posts") 
 
 
 class Message(Base):
@@ -41,6 +51,7 @@ class Message(Base):
 
     sender = relationship("User", foreign_keys=[sender_id])
     receiver = relationship("User", foreign_keys=[receiver_id])
+
 
 class Report(Base):
     __tablename__ = "reports"

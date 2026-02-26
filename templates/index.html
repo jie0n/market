@@ -7,17 +7,14 @@
 <body>
 
 <h1>회원가입</h1>
-<form id="register-form">
-    <input type="text" id="reg-username" placeholder="아이디" required>
-    <input type="password" id="reg-password" placeholder="비밀번호" required>
-    <button type="submit">회원가입</button>
-</form>
+<button onclick="location.href='/register'">회원가입하기</button>
+<button onclick="location.href='/account'">회원정보수정</button>
 
 <hr>
 
 <h1>로그인</h1>
 <form id="login-form">
-    <input type="text" name="username" placeholder="아이디" required>
+    <input type="text" name="email" placeholder="아이디" required>
     <input type="password" name="password" placeholder="비밀번호" required>
     <button type="submit">로그인</button>
 </form>
@@ -60,7 +57,7 @@
 
 <hr>
 
-<h2>1:1 채팅</h2>
+<h2>1:1 채팅 <span id="chat-target-name" style="color: blue; font-size: 16px;"></span></h2>
 <select id="chat-user">
     <option value="">--대화할 상대 선택--</option>
 </select>
@@ -84,26 +81,11 @@ const chatBox = document.getElementById("chat-box");
 const chatInput = document.getElementById("chat-input");
 const sendBtn = document.getElementById("send-btn");
 const reportChatUserBtn = document.getElementById("report-chat-user-btn");
+const chatTargetName = document.getElementById("chat-target-name");
 
 function getToken() {
     return localStorage.getItem('token');
 }
-
-/* 회원가입 */
-registerForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const username = document.getElementById('reg-username').value;
-    const password = document.getElementById('reg-password').value;
-
-    const res = await fetch('/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({ username, password })
-    });
-
-    alert(res.ok ? '회원가입 성공' : '회원가입 실패');
-    registerForm.reset();
-});
 
 /* 로그인 */
 loginForm.addEventListener('submit', async (e) => {
@@ -147,7 +129,7 @@ postForm.addEventListener('submit', async (e) => {
     const data = await res.json();
 
     if (!res.ok) { 
-        alert(data.detail || '작성 실패');  // 🔥 여기서 서버 메시지 표시
+        alert(data.detail || '작성 실패'); 
         return; 
     }
 
@@ -216,7 +198,7 @@ async function loadPosts() {
     posts.forEach(post => {
         const li = document.createElement('li');
         li.innerHTML = `
-            <strong>${post.title}</strong> - 작성자: ${post.username}<br>
+            <strong>${post.title}</strong> - 작성자: ${post.nickname || '알 수 없음'}<br>
             ${post.content}<br>
             ${post.image_path ? `<img src="${post.image_path}" width="200"><br>` : ''}
         `;
@@ -226,7 +208,7 @@ async function loadPosts() {
         chatBtn.type = "button";
         chatBtn.onclick = () => {
             chatUserSelect.value = post.user_id;
-            loadChat(post.user_id);
+            loadChat(post.user_id, post.nickname); // 닉네임 함께 전달
         };
 
         const editBtn = document.createElement('button');
@@ -315,13 +297,13 @@ async function loadMyReports() {
             postText = matchedPost ? `게시글: ${matchedPost.title}` : "삭제된 게시글";
         }
 
-        let reportedUsername = "알 수 없음";
+        let reportednickname = "알 수 없음";
         const matchedUser = users.find(u => u.id === r.reported_user_id);
-        if (matchedUser) reportedUsername = matchedUser.username;
+        if (matchedUser) reportednickname = matchedUser.nickname;
 
         li.innerHTML = `
             ${postText} /
-            신고대상: ${reportedUsername}<br>
+            신고대상: ${reportednickname}<br>
             사유: ${r.reason}<br>
             날짜: ${r.created_at}
         `;
@@ -347,15 +329,25 @@ async function loadUsers() {
     users.forEach(user => {
         const option = document.createElement("option");
         option.value = user.id;
-        option.textContent = user.username;
+        option.textContent = user.nickname;
         chatUserSelect.appendChild(option);
     });
 }
 
 /* 채팅 불러오기 */
-async function loadChat(userId) {
+async function loadChat(userId, nickname = "") {
     const token = getToken();
     if (!token) { alert("로그인이 필요합니다"); return; }
+
+    // 상대방 닉네임 상단 표시
+    if (nickname) {
+        chatTargetName.textContent = `(상대: ${nickname})`;
+    } else {
+        const selectedOption = chatUserSelect.options[chatUserSelect.selectedIndex];
+        if (selectedOption && selectedOption.value) {
+            chatTargetName.textContent = `(상대: ${selectedOption.text})`;
+        }
+    }
 
     const res = await fetch(`/chat/${userId}`, {
         headers: { Authorization: "Bearer " + token }
@@ -369,7 +361,7 @@ async function loadChat(userId) {
     messages.forEach(msg => {
         const div = document.createElement("div");
         div.style.marginBottom = "5px";
-        div.textContent = msg.sender_username + " : " + msg.content;
+        div.textContent = msg.sender_nickname + " : " + msg.content;
         chatBox.appendChild(div);
     });
 
@@ -397,7 +389,7 @@ sendBtn.addEventListener("click", async () => {
 
     const data = await res.json();
 
-    if (!res.ok) { alert(data.detail || "전송 실패"); return; } // 🔥 서버 메시지 표시
+    if (!res.ok) { alert(data.detail || "전송 실패"); return; }
 
     chatInput.value = "";
     loadChat(receiverId);
@@ -433,6 +425,7 @@ reportChatUserBtn.addEventListener("click", async () => {
 chatUserSelect.addEventListener("change", () => {
     const userId = chatUserSelect.value;
     if (userId) loadChat(userId);
+    else chatTargetName.textContent = "";
 });
 
 window.onload = () => {

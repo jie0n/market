@@ -1,9 +1,8 @@
-from models import Post, Report
-from fastapi import APIRouter, Depends, HTTPException, Form, UploadFile, File, status
+from models import Post, User, Report  # <-- Report가 추가되었습니다.
+from fastapi import APIRouter, Depends, HTTPException, Form, UploadFile, File
 from sqlalchemy.orm import Session
 import os, shutil, uuid
 from database import get_db
-from models import Post
 from auth import get_current_user
 from filtering import mask_sensitive_info
 
@@ -17,7 +16,7 @@ def create_post(
     title: str = Form(...),
     content: str = Form(...),
     image: UploadFile | None = File(None),
-    user_id: int = Depends(get_current_user),
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     image_path = None
@@ -32,7 +31,12 @@ def create_post(
     safe_title = mask_sensitive_info(title)
     safe_content = mask_sensitive_info(content)
 
-    post = Post(title=safe_title,content=safe_content,image_path=image_path,user_id=user_id)
+    post = Post(
+        title=safe_title,
+        content=safe_content,
+        image_path=image_path,
+        user_id=user.id
+    )
 
     db.add(post)
     db.commit()
@@ -43,23 +47,25 @@ def create_post(
         "title": post.title,
         "content": post.content,
         "image_path": post.image_path,
-        "user_id": post.user_id
+        "user_id": user.id,
+        "nickname": user.nickname
     }
 
 @router.get("/")
 def get_posts(db: Session = Depends(get_db)):
     posts = db.query(Post).order_by(Post.id.desc()).all()
-    return [
-        {
+    result = []
+    for p in posts:
+        author = db.query(User).filter(User.id == p.user_id).first()
+        result.append({
             "id": p.id,
             "title": p.title,
             "content": p.content,
             "image_path": p.image_path,
             "user_id": p.user_id,
-            "username": p.author.username
-        }
-        for p in posts
-    ]
+            "nickname": author.nickname if author else "알 수 없음"
+        })
+    return result
 
 @router.put("/{post_id}")
 def update_post(
@@ -67,13 +73,13 @@ def update_post(
     title: str = Form(...),
     content: str = Form(...),
     image: UploadFile | None = File(None),
-    user_id: int = Depends(get_current_user),
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     post = db.query(Post).filter(Post.id == post_id).first()
     if not post:
         raise HTTPException(status_code=404, detail="게시글 없음")
-    if post.user_id != user_id:
+    if post.user_id != user.id:
         raise HTTPException(status_code=403, detail="수정 권한 없음")
 
     if image:
@@ -95,11 +101,11 @@ def update_post(
     return {"message": "게시글 수정 완료"}
 
 @router.delete("/{post_id}")
-def delete_post(post_id: int, user_id: int = Depends(get_current_user), db: Session = Depends(get_db)):
+def delete_post(post_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     post = db.query(Post).filter(Post.id == post_id).first()
     if not post:
         raise HTTPException(status_code=404, detail="게시글 없음")
-    if post.user_id != user_id:
+    if post.user_id != user.id:
         raise HTTPException(status_code=403, detail="삭제 권한 없음")
 
     if post.image_path:
@@ -115,18 +121,18 @@ def delete_post(post_id: int, user_id: int = Depends(get_current_user), db: Sess
 def report_post(
     post_id: int,
     reason: str = Form(...),
-    user_id: int = Depends(get_current_user),
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     post = db.query(Post).filter(Post.id == post_id).first()
     if not post:
         raise HTTPException(status_code=404, detail="게시글 없음")
 
-    if post.user_id == user_id:
+    if post.user_id == user.id:
         raise HTTPException(status_code=400, detail="자기 자신은 신고할 수 없음")
 
     report = Report(
-        reporter_id=user_id,
+        reporter_id=user.id,
         reported_user_id=post.user_id,
         post_id=post.id,
         reason=reason
@@ -139,10 +145,10 @@ def report_post(
 
 @router.get("/reports/my")
 def get_my_reports(
-    user_id: int = Depends(get_current_user),
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    reports = db.query(Report).filter(Report.reporter_id == user_id).all()
+    reports = db.query(Report).filter(Report.reporter_id == user.id).all()
 
     return [
         {

@@ -1,0 +1,122 @@
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>회원가입</title>
+    </head>
+    <body>
+
+    <h1>회원가입</h1>
+
+    <form id="register-form">
+
+        <input type="text" name="nickname" placeholder="닉네임" required><br><br>
+
+        <input type="email" id="email" name="email" placeholder="이메일" required>
+        <button type="button" id="send-code-btn">인증번호 받기(Gmail)</button>
+        <br><br>
+
+        <input type="text" id="code" placeholder="인증번호 입력">
+        <button type="button" id="verify-code-btn">인증 확인</button>
+        <span id="verify-status"></span>
+        <br><br>
+
+        <input type="text" name="phone" placeholder="전화번호" required><br><br>
+
+        <input type="password" name="password" placeholder="비밀번호" required><br><br>
+
+        <button type="submit" id="register-btn" disabled>회원가입</button>
+
+    </form>
+
+    <hr>
+    <button onclick="location.href='/'">메인으로</button>
+
+    <script>
+
+    let isVerified = false;
+
+    const sendCodeBtn = document.getElementById("send-code-btn");
+    const verifyCodeBtn = document.getElementById("verify-code-btn");
+    const verifyStatus = document.getElementById("verify-status");
+    const registerBtn = document.getElementById("register-btn");
+    const registerForm = document.getElementById("register-form");
+
+    /* 인증번호 발송 */
+    sendCodeBtn.addEventListener("click", async () => {
+
+        const email = document.getElementById("email").value;
+        if (!email) { alert("이메일을 입력하세요"); return; }
+
+        const res = await fetch("/auth/send-code", {
+            method: "POST",
+            body: new URLSearchParams({ email })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            alert(data.detail || "전송 실패");
+            return;
+        }
+
+        alert("인증번호가 전송되었습니다.");
+    });
+
+    /* 인증번호 확인 */
+    verifyCodeBtn.addEventListener("click", async () => {
+
+        const email = document.getElementById("email").value;
+        const code = document.getElementById("code").value;
+
+        if (!code) { alert("인증번호를 입력하세요"); return; }
+
+        const res = await fetch("/auth/verify-code", {
+            method: "POST",
+            body: new URLSearchParams({ email, code })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            verifyStatus.textContent = "잘못된 인증번호 입니다";
+            verifyStatus.style.color = "red";
+            return;
+        }
+
+        verifyStatus.textContent = "✔ 인증 완료";
+        verifyStatus.style.color = "green";
+
+        isVerified = true;
+        registerBtn.disabled = false;
+    });
+
+    /* 회원가입 */
+    registerForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        if (!isVerified) {
+            alert("이메일 인증을 완료하세요");
+            return;
+        }
+
+        const res = await fetch("/auth/register", {
+            method: "POST",
+            body: new FormData(registerForm)
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            alert(data.detail || "회원가입 실패");
+            return;
+        }
+
+        alert("회원가입 성공");
+        window.location.href = "/";
+    });
+
+    </script>
+
+    </body>
+    </html>
