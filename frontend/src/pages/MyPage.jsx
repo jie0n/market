@@ -5,119 +5,81 @@ import Input from "../components/Input";
 import Alert from "../components/Alert";
 
 // ── 섹션 카드 래퍼 ──────────────────────────────────────────
-function Section({ title, description, children }) {
+function Section({ title, children }) {
   return (
     <div style={{
       background: "#fff", borderRadius: "16px", border: "1px solid #f0f0f0",
       padding: "28px", marginBottom: "16px",
     }}>
       <div style={{ marginBottom: "20px", paddingBottom: "16px", borderBottom: "1px solid #f5f5f5" }}>
-        <h2 style={{ fontSize: "15px", fontWeight: "700", color: "#111", margin: "0 0 4px", letterSpacing: "-0.02em" }}>
+        <h2 style={{ fontSize: "15px", fontWeight: "700", color: "#111", margin: 0, letterSpacing: "-0.02em" }}>
           {title}
         </h2>
-        {description && <p style={{ fontSize: "13px", color: "#aaa", margin: 0 }}>{description}</p>}
       </div>
       {children}
     </div>
   );
 }
 
-// ── 정보 행 (읽기 전용) ─────────────────────────────────────
-function InfoRow({ label, value }) {
+// ── 일반 편집 행 (닉네임, 전화번호) ─────────────────────────
+function EditableRow({ label, value, onSave, placeholder, type = "text", isLast = false }) {
+  const [editing, setEditing] = useState(false);
+  const [inputVal, setInputVal] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const open = () => { setEditing(true); setInputVal(""); setError(""); };
+  const close = () => { setEditing(false); setInputVal(""); setError(""); };
+
+  const handleSave = async () => {
+    if (!inputVal.trim()) return setError("값을 입력해주세요.");
+    setLoading(true); setError("");
+    try {
+      await onSave(inputVal);
+      close();
+    } catch (e) { setError(e.message); }
+    finally { setLoading(false); }
+  };
+
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #f9f9f9" }}>
-      <span style={{ fontSize: "13px", color: "#888", minWidth: "80px" }}>{label}</span>
-      <span style={{ fontSize: "14px", color: "#111", fontWeight: "500" }}>{value || "-"}</span>
+    <div style={{ borderBottom: isLast ? "none" : "1px solid #f9f9f9" }}>
+      <div style={{ display: "flex", alignItems: "center", padding: "12px 0" }}>
+        <span style={{ fontSize: "13px", color: "#888", minWidth: "80px" }}>{label}</span>
+        <span style={{ fontSize: "14px", color: "#111", fontWeight: "500", flex: 1 }}>{value || "-"}</span>
+        <Button onClick={open} fullWidth={false} small variant="outline">변경</Button>
+      </div>
+      {editing && (
+        <div style={{ paddingBottom: "12px" }}>
+          <Alert message={error} type="error" />
+          <div style={{ display: "flex", gap: "8px", alignItems: "flex-end" }}>
+            <div style={{ flex: 1 }}>
+              <Input type={type} value={inputVal} onChange={setInputVal} placeholder={placeholder || value || ""} />
+            </div>
+            <div style={{ marginBottom: "16px", display: "flex", gap: "6px" }}>
+              <Button onClick={close} variant="outline" fullWidth={false} small>취소</Button>
+              <Button onClick={handleSave} loading={loading} fullWidth={false} small>저장</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-// ══════════════════════════════════════════════════════════
-// 닉네임 수정
-// ══════════════════════════════════════════════════════════
-function NicknameSection({ currentNickname, onUpdated }) {
-  const [nickname, setNickname] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-
-  const handleUpdate = async () => {
-    if (!nickname.trim()) return setError("닉네임을 입력해주세요.");
-    if (nickname === currentNickname) return setError("현재 닉네임과 동일합니다.");
-    setLoading(true); setError(""); setSuccess("");
-    try {
-      await authApi.updateProfile({ nickname });
-      setSuccess("닉네임이 변경되었습니다.");
-      onUpdated();
-      setNickname("");
-    } catch (e) { setError(e.message); }
-    finally { setLoading(false); }
-  };
-
-  return (
-    <Section title="닉네임 변경" description="다른 사용자에게 보여지는 이름입니다">
-      <Alert message={error} type="error" />
-      <Alert message={success} type="success" />
-      <div style={{ display: "flex", gap: "10px", alignItems: "flex-end" }}>
-        <div style={{ flex: 1 }}>
-          <Input label="새 닉네임" value={nickname} onChange={setNickname} placeholder={currentNickname} />
-        </div>
-        <div style={{ marginBottom: "16px" }}>
-          <Button onClick={handleUpdate} loading={loading} fullWidth={false}>변경</Button>
-        </div>
-      </div>
-    </Section>
-  );
-}
-
-// ══════════════════════════════════════════════════════════
-// 전화번호 수정
-// ══════════════════════════════════════════════════════════
-function PhoneSection({ currentPhone, onUpdated }) {
-  const [phone, setPhone] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-
-  const handleUpdate = async () => {
-    if (!phone.trim()) return setError("전화번호를 입력해주세요.");
-    setLoading(true); setError(""); setSuccess("");
-    try {
-      await authApi.updateProfile({ phone });
-      setSuccess("전화번호가 변경되었습니다.");
-      onUpdated();
-      setPhone("");
-    } catch (e) { setError(e.message); }
-    finally { setLoading(false); }
-  };
-
-  return (
-    <Section title="전화번호 변경">
-      <Alert message={error} type="error" />
-      <Alert message={success} type="success" />
-      <div style={{ display: "flex", gap: "10px", alignItems: "flex-end" }}>
-        <div style={{ flex: 1 }}>
-          <Input label="새 전화번호" value={phone} onChange={setPhone} placeholder={currentPhone || "010-0000-0000"} />
-        </div>
-        <div style={{ marginBottom: "16px" }}>
-          <Button onClick={handleUpdate} loading={loading} fullWidth={false}>변경</Button>
-        </div>
-      </div>
-    </Section>
-  );
-}
-
-// ══════════════════════════════════════════════════════════
-// 이메일 수정 (인증 필요)
-// ══════════════════════════════════════════════════════════
-function EmailSection({ currentEmail, onUpdated }) {
-  const [step, setStep] = useState(1); // 1: 이메일입력, 2: 코드입력
+// ── 이메일 행 (인증 필요) ─────────────────────────────────────
+function EmailRow({ currentEmail, onUpdated }) {
+  const [editing, setEditing] = useState(false);
+  const [step, setStep] = useState(1);
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
-  const [verified, setVerified] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  const close = () => {
+    setEditing(false);
+    setStep(1); setEmail(""); setCode(""); setError(""); setSuccess("");
+  };
 
   const sendCode = async () => {
     if (!email.trim()) return setError("이메일을 입력해주세요.");
@@ -134,67 +96,76 @@ function EmailSection({ currentEmail, onUpdated }) {
     if (!code.trim()) return setError("인증번호를 입력해주세요.");
     setLoading(true); setError(""); setSuccess("");
     try {
-      // 코드 인증
       await authApi.verifyCode(email, code);
-      // 이메일 업데이트
       await authApi.updateProfile({ email });
       setSuccess("이메일이 변경되었습니다.");
-      setVerified(true);
       onUpdated();
-      setTimeout(() => { setStep(1); setEmail(""); setCode(""); setVerified(false); setSuccess(""); }, 1500);
+      setTimeout(close, 1500);
     } catch (e) { setError(e.message); }
     finally { setLoading(false); }
   };
 
   return (
-    <Section title="이메일 변경" description="변경 시 이메일 인증이 필요합니다">
-      <Alert message={error} type="error" />
-      <Alert message={success} type="success" />
+    <div style={{ borderBottom: "1px solid #f9f9f9" }}>
+      <div style={{ display: "flex", alignItems: "center", padding: "12px 0" }}>
+        <span style={{ fontSize: "13px", color: "#888", minWidth: "80px" }}>이메일</span>
+        <span style={{ fontSize: "14px", color: "#111", fontWeight: "500", flex: 1 }}>{currentEmail || "-"}</span>
+        <Button onClick={() => setEditing(true)} fullWidth={false} small variant="outline">변경</Button>
+      </div>
+      {editing && (
+        <div style={{ paddingBottom: "12px" }}>
+          <Alert message={error} type="error" />
+          <Alert message={success} type="success" />
 
-      {step === 1 && (
-        <div style={{ display: "flex", gap: "10px", alignItems: "flex-end" }}>
-          <div style={{ flex: 1 }}>
-            <Input label="새 이메일" type="email" value={email} onChange={setEmail} placeholder={currentEmail} />
-          </div>
-          <div style={{ marginBottom: "16px" }}>
-            <Button onClick={sendCode} loading={loading} fullWidth={false}>인증번호 받기</Button>
-          </div>
+          {step === 1 && (
+            <div style={{ display: "flex", gap: "8px", alignItems: "flex-end" }}>
+              <div style={{ flex: 1 }}>
+                <Input label="새 이메일" type="email" value={email} onChange={setEmail} placeholder={currentEmail} />
+              </div>
+              <div style={{ marginBottom: "16px", display: "flex", gap: "6px" }}>
+                <Button onClick={close} variant="outline" fullWidth={false} small>취소</Button>
+                <Button onClick={sendCode} loading={loading} fullWidth={false} small>인증번호 받기</Button>
+              </div>
+            </div>
+          )}
+
+          {step === 2 && (
+            <>
+              <div style={{ fontSize: "13px", color: "#888", marginBottom: "12px" }}>
+                <strong style={{ color: "#111" }}>{email}</strong>으로 발송된 인증번호를 입력하세요
+              </div>
+              <div style={{ display: "flex", gap: "8px", alignItems: "flex-end" }}>
+                <div style={{ flex: 1 }}>
+                  <Input label="인증번호" value={code} onChange={setCode} placeholder="6자리 입력" />
+                </div>
+                <div style={{ marginBottom: "16px", display: "flex", gap: "6px" }}>
+                  <Button onClick={close} variant="outline" fullWidth={false} small>취소</Button>
+                  <Button onClick={sendCode} loading={loading} variant="outline" fullWidth={false} small>재발송</Button>
+                  <Button onClick={verifyAndUpdate} loading={loading} fullWidth={false} small>확인</Button>
+                </div>
+              </div>
+              <button onClick={() => { setStep(1); setError(""); setSuccess(""); }}
+                style={{ background: "none", border: "none", color: "#aaa", fontSize: "12px", cursor: "pointer", fontFamily: "inherit", padding: 0 }}>
+                ← 이메일 변경
+              </button>
+            </>
+          )}
         </div>
       )}
-
-      {step === 2 && (
-        <>
-          <div style={{ fontSize: "13px", color: "#888", marginBottom: "12px" }}>
-            <strong style={{ color: "#111" }}>{email}</strong>으로 발송된 인증번호를 입력하세요
-          </div>
-          <div style={{ display: "flex", gap: "10px", alignItems: "flex-end" }}>
-            <div style={{ flex: 1 }}>
-              <Input label="인증번호" value={code} onChange={setCode} placeholder="6자리 입력" />
-            </div>
-            <div style={{ marginBottom: "16px", display: "flex", gap: "6px" }}>
-              <Button onClick={sendCode} loading={loading} variant="outline" fullWidth={false}>재발송</Button>
-              <Button onClick={verifyAndUpdate} loading={loading} disabled={verified} fullWidth={false}>확인</Button>
-            </div>
-          </div>
-          <button onClick={() => { setStep(1); setError(""); setSuccess(""); }}
-            style={{ background: "none", border: "none", color: "#aaa", fontSize: "12px", cursor: "pointer", fontFamily: "inherit", padding: 0 }}>
-            ← 이메일 변경
-          </button>
-        </>
-      )}
-    </Section>
+    </div>
   );
 }
 
-// ══════════════════════════════════════════════════════════
-// 비밀번호 변경
-// ══════════════════════════════════════════════════════════
-function PasswordSection() {
+// ── 비밀번호 행 ───────────────────────────────────────────────
+function PasswordRow() {
+  const [editing, setEditing] = useState(false);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  const close = () => { setEditing(false); setPassword(""); setConfirm(""); setError(""); setSuccess(""); };
 
   const handleUpdate = async () => {
     if (!password) return setError("새 비밀번호를 입력해주세요.");
@@ -204,20 +175,40 @@ function PasswordSection() {
     try {
       await authApi.updateProfile({ password });
       setSuccess("비밀번호가 변경되었습니다.");
-      setPassword(""); setConfirm("");
+      setTimeout(close, 1500);
     } catch (e) { setError(e.message); }
     finally { setLoading(false); }
   };
 
   return (
-    <Section title="비밀번호 변경">
-      <Alert message={error} type="error" />
-      <Alert message={success} type="success" />
-      <Input label="새 비밀번호" type="password" value={password} onChange={setPassword} placeholder="6자 이상" />
-      <Input label="비밀번호 확인" type="password" value={confirm} onChange={setConfirm} placeholder="비밀번호 다시 입력" />
-      <Button onClick={handleUpdate} loading={loading}>비밀번호 변경</Button>
-    </Section>
+    <div>
+      <div style={{ display: "flex", alignItems: "center", padding: "12px 0" }}>
+        <span style={{ fontSize: "13px", color: "#888", minWidth: "80px" }}>비밀번호</span>
+        <span style={{ fontSize: "14px", color: "#bbb", flex: 1 }}>••••••••</span>
+        <Button onClick={() => setEditing(true)} fullWidth={false} small variant="outline">변경</Button>
+      </div>
+      {editing && (
+        <div style={{ paddingBottom: "12px" }}>
+          <Alert message={error} type="error" />
+          <Alert message={success} type="success" />
+          <Input label="새 비밀번호" type="password" value={password} onChange={setPassword} placeholder="6자 이상" />
+          <Input label="비밀번호 확인" type="password" value={confirm} onChange={setConfirm} placeholder="비밀번호 다시 입력" />
+          <div style={{ display: "flex", gap: "8px" }}>
+            <Button onClick={close} variant="outline" fullWidth={false} small>취소</Button>
+            <Button onClick={handleUpdate} loading={loading} fullWidth={false} small>저장</Button>
+          </div>
+        </div>
+      )}
+    </div>
   );
+}
+
+function formatPhone(phone) {
+  if (!phone) return null;
+  const d = phone.replace(/\D/g, "");
+  if (d.length === 11) return `${d.slice(0, 3)}-${d.slice(3, 7)}-${d.slice(7)}`;
+  if (d.length === 10) return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`;
+  return phone;
 }
 
 // ══════════════════════════════════════════════════════════
@@ -258,18 +249,22 @@ export default function MyPage({ onUserUpdate }) {
         <p style={{ fontSize: "14px", color: "#aaa", margin: 0 }}>계정 정보를 관리하세요</p>
       </div>
 
-      {/* 현재 정보 */}
-      <Section title="현재 정보">
-        <InfoRow label="닉네임" value={user?.nickname} />
-        <InfoRow label="이메일" value={user?.email} />
-        <InfoRow label="전화번호" value={user?.phone} />
+      <Section title="내 정보">
+        <EditableRow
+          label="닉네임"
+          value={user?.nickname}
+          onSave={async (val) => { await authApi.updateProfile({ nickname: val }); fetchUser(); }}
+          placeholder="새 닉네임"
+        />
+        <EditableRow
+          label="전화번호"
+          value={formatPhone(user?.phone)}
+          onSave={async (val) => { await authApi.updateProfile({ phone: val }); fetchUser(); }}
+        />
+        <EmailRow currentEmail={user?.email} onUpdated={fetchUser} />
+        <PasswordRow />
       </Section>
 
-      {/* 수정 섹션들 */}
-      <NicknameSection currentNickname={user?.nickname} onUpdated={fetchUser} />
-      <PhoneSection currentPhone={user?.phone} onUpdated={fetchUser} />
-      <EmailSection currentEmail={user?.email} onUpdated={fetchUser} />
-      <PasswordSection />
     </div>
   );
 }
