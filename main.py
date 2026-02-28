@@ -10,10 +10,19 @@ from models import Message, User, Report
 from auth import get_current_user, router as auth_router, pwd_context
 from posts import router as posts_router
 from filtering import mask_sensitive_info
+from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()
 API_KEY = os.getenv("SAFE_BROWSING_API_KEY")
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://localhost:3001"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # 라우터 등록
 app.include_router(auth_router)
@@ -52,6 +61,7 @@ def account_page(request: Request):
 @app.get("/auth/me")
 def get_my_info(current_user: User = Depends(get_current_user)):
     return {
+        "id": current_user.id,
         "nickname": current_user.nickname,
         "email": current_user.email,
         "phone": current_user.phone
