@@ -77,7 +77,7 @@ function DeleteModal({ onClose, onConfirm, loading }) {
 // PostDetailPage
 // ══════════════════════════════════════════════════════════
 export default function PostDetailPage({ user }) {
-  const { id } = useParams();
+  useParams();
   const { state } = useLocation();
   const navigate = useNavigate();
 

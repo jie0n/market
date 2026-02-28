@@ -10,14 +10,6 @@ import PostFormPage from "./pages/PostFormPage";
 import ChatPage from "./pages/ChatPage";
 import MyReportsPage from "./pages/MyReportsPage";
 
-// 아직 안 만든 페이지 placeholder
-const PlaceholderPage = ({ title }) => (
-  <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "80px 24px", textAlign: "center" }}>
-    <h2 style={{ fontSize: "22px", fontWeight: "700", color: "#111", marginBottom: "8px" }}>{title}</h2>
-    <p style={{ color: "#aaa", fontSize: "14px" }}>준비 중인 페이지입니다.</p>
-  </div>
-);
-
 // 로그인 필요 라우트
 function PrivateRoute({ user, children }) {
   if (!user) return <Navigate to="/auth" replace />;

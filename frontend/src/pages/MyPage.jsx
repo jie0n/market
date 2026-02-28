@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { authApi } from "../api";
 import Button from "../components/Button";
 import Input from "../components/Input";
@@ -227,16 +227,16 @@ export default function MyPage({ onUserUpdate }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchUser = async () => {
+  const fetchUser = useCallback(async () => {
     try {
       const data = await authApi.getMe();
       setUser(data);
       if (onUserUpdate) onUserUpdate(data);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
-  };
+  }, [onUserUpdate]);
 
-  useEffect(() => { fetchUser(); }, []);
+  useEffect(() => { fetchUser(); }, [fetchUser]);
 
   if (loading) {
     return (
