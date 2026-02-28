@@ -155,12 +155,12 @@ export default function PostDetailPage({ user }) {
 
           {/* 이미지 */}
           {post.image_path && !imgError && (
-            <div style={{ width: "100%", maxHeight: "420px", overflow: "hidden", background: "#f7f7f7" }}>
+            <div style={{ width: "100%", background: "#f7f7f7" }}>
               <img
                 src={`${API_BASE}${post.image_path}`}
                 alt={post.title}
                 onError={() => setImgError(true)}
-                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                style={{ width: "100%", height: "auto", display: "block" }}
               />
             </div>
           )}

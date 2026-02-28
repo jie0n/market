@@ -63,7 +63,7 @@ function NicknameSection({ currentNickname, onUpdated }) {
           <Input label="새 닉네임" value={nickname} onChange={setNickname} placeholder={currentNickname} />
         </div>
         <div style={{ marginBottom: "16px" }}>
-          <Button onClick={handleUpdate} loading={loading} small fullWidth={false}>변경</Button>
+          <Button onClick={handleUpdate} loading={loading} fullWidth={false}>변경</Button>
         </div>
       </div>
     </Section>
@@ -73,7 +73,7 @@ function NicknameSection({ currentNickname, onUpdated }) {
 // ══════════════════════════════════════════════════════════
 // 전화번호 수정
 // ══════════════════════════════════════════════════════════
-function PhoneSection({ onUpdated }) {
+function PhoneSection({ currentPhone, onUpdated }) {
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -97,10 +97,10 @@ function PhoneSection({ onUpdated }) {
       <Alert message={success} type="success" />
       <div style={{ display: "flex", gap: "10px", alignItems: "flex-end" }}>
         <div style={{ flex: 1 }}>
-          <Input label="새 전화번호" value={phone} onChange={setPhone} placeholder="010-0000-0000" />
+          <Input label="새 전화번호" value={phone} onChange={setPhone} placeholder={currentPhone || "010-0000-0000"} />
         </div>
         <div style={{ marginBottom: "16px" }}>
-          <Button onClick={handleUpdate} loading={loading} small fullWidth={false}>변경</Button>
+          <Button onClick={handleUpdate} loading={loading} fullWidth={false}>변경</Button>
         </div>
       </div>
     </Section>
@@ -157,7 +157,7 @@ function EmailSection({ currentEmail, onUpdated }) {
             <Input label="새 이메일" type="email" value={email} onChange={setEmail} placeholder={currentEmail} />
           </div>
           <div style={{ marginBottom: "16px" }}>
-            <Button onClick={sendCode} loading={loading} small fullWidth={false}>인증번호 받기</Button>
+            <Button onClick={sendCode} loading={loading} fullWidth={false}>인증번호 받기</Button>
           </div>
         </div>
       )}
@@ -172,8 +172,8 @@ function EmailSection({ currentEmail, onUpdated }) {
               <Input label="인증번호" value={code} onChange={setCode} placeholder="6자리 입력" />
             </div>
             <div style={{ marginBottom: "16px", display: "flex", gap: "6px" }}>
-              <Button onClick={sendCode} loading={loading} variant="outline" small fullWidth={false}>재발송</Button>
-              <Button onClick={verifyAndUpdate} loading={loading} disabled={verified} small fullWidth={false}>확인</Button>
+              <Button onClick={sendCode} loading={loading} variant="outline" fullWidth={false}>재발송</Button>
+              <Button onClick={verifyAndUpdate} loading={loading} disabled={verified} fullWidth={false}>확인</Button>
             </div>
           </div>
           <button onClick={() => { setStep(1); setError(""); setSuccess(""); }}
@@ -267,7 +267,7 @@ export default function MyPage({ onUserUpdate }) {
 
       {/* 수정 섹션들 */}
       <NicknameSection currentNickname={user?.nickname} onUpdated={fetchUser} />
-      <PhoneSection onUpdated={fetchUser} />
+      <PhoneSection currentPhone={user?.phone} onUpdated={fetchUser} />
       <EmailSection currentEmail={user?.email} onUpdated={fetchUser} />
       <PasswordSection />
     </div>

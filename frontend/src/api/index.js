@@ -50,6 +50,7 @@ export const postsApi = {
   update: (id, formData) => apiFormData(`/posts/${id}`, { method: "PUT", formData }),
   delete: (id) => apiFetch(`/posts/${id}`, { method: "DELETE" }),
   report: (id, reason) => apiFetch(`/posts/${id}/report`, { body: { reason } }),
+  getMyReports: () => apiFetch("/posts/reports/my"),
 };
 
 export const chatApi = {

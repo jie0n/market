@@ -8,6 +8,7 @@ import MyPage from "./pages/MyPage";
 import PostDetailPage from "./pages/PostDetailPage";
 import PostFormPage from "./pages/PostFormPage";
 import ChatPage from "./pages/ChatPage";
+import MyReportsPage from "./pages/MyReportsPage";
 
 // 아직 안 만든 페이지 placeholder
 const PlaceholderPage = ({ title }) => (
@@ -98,6 +99,11 @@ export default function App() {
                 <Route path="/mypage" element={
                   <PrivateRoute user={user}>
                     <MyPage onUserUpdate={setUser} />
+                  </PrivateRoute>
+                } />
+                <Route path="/my-reports" element={
+                  <PrivateRoute user={user}>
+                    <MyReportsPage />
                   </PrivateRoute>
                 } />
                 <Route path="*" element={<Navigate to="/" replace />} />

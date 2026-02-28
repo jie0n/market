@@ -5,6 +5,7 @@ import os, shutil, uuid
 from database import get_db
 from auth import get_current_user
 from filtering import mask_sensitive_info
+from watermark import apply_watermark
 
 router = APIRouter(prefix="/posts", tags=["posts"])
 
@@ -26,6 +27,7 @@ def create_post(
         file_path = os.path.join(UPLOAD_DIR, filename)
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(image.file, buffer)
+        apply_watermark(file_path, user.nickname)
         image_path = f"/uploads/{filename}"
 
     safe_title = mask_sensitive_info(title)
@@ -92,6 +94,7 @@ def update_post(
         file_path = os.path.join(UPLOAD_DIR, filename)
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(image.file, buffer)
+        apply_watermark(file_path, user.nickname)
         post.image_path = f"/uploads/{filename}"
 
     post.title = mask_sensitive_info(title)
@@ -150,13 +153,15 @@ def get_my_reports(
 ):
     reports = db.query(Report).filter(Report.reporter_id == user.id).all()
 
-    return [
-        {
+    result = []
+    for r in reports:
+        reported_user = db.query(User).filter(User.id == r.reported_user_id).first()
+        result.append({
             "id": r.id,
             "post_id": r.post_id,
             "reported_user_id": r.reported_user_id,
+            "reported_user_nickname": reported_user.nickname if reported_user else "알 수 없음",
             "reason": r.reason,
             "created_at": r.created_at.isoformat()
-        }
-        for r in reports
-    ]
+        })
+    return result
