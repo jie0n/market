@@ -53,6 +53,7 @@ def account_page(request: Request):
 def get_my_info(current_user: User = Depends(get_current_user)):
     return {
         "id": current_user.id,
+        "name": current_user.name,
         "nickname": current_user.nickname,
         "email": current_user.email,
         "phone": current_user.phone
@@ -83,6 +84,7 @@ async def send_update_code(
 # =========================
 @app.put("/auth/update")
 def update_profile(
+    name: str = Form(None),
     nickname: str = Form(None),
     phone: str = Form(None),
     password: str = Form(None),
@@ -90,6 +92,10 @@ def update_profile(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    
+    if name:
+        current_user.name = name
+
     if nickname:
         exists = db.query(User).filter(User.nickname == nickname, User.id != current_user.id).first()
         if exists:

@@ -11,6 +11,7 @@
 
     <form id="update-form">
         <h3>기본 정보 수정</h3>
+        <p>이름: <input type="text" id="up-name" name="name"></p>
         <p>닉네임: <input type="text" id="up-nickname" name="nickname"></p>
         <p>전화번호: <input type="text" id="up-phone" name="phone"></p>
 
@@ -52,9 +53,12 @@
                 headers: { Authorization: "Bearer " + token }
             });
             const data = await res.json();
+
+         document.getElementById('up-name').value = data.name;
             document.getElementById('up-nickname').value = data.nickname;
             document.getElementById('up-phone').value = data.phone;
             document.getElementById('up-email').value = data.email;
+
             originalEmail = data.email;
         }
 
@@ -141,6 +145,7 @@
             }
 
             const formData = new URLSearchParams();
+            formData.append('name', document.getElementById('up-name').value);
             formData.append('nickname', document.getElementById('up-nickname').value);
             formData.append('phone', document.getElementById('up-phone').value);
             formData.append('email', newEmail);
