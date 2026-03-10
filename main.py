@@ -52,6 +52,7 @@ def account_page(request: Request):
 @app.get("/auth/me")
 def get_my_info(current_user: User = Depends(get_current_user)):
     return {
+        "id": current_user.id,
         "nickname": current_user.nickname,
         "email": current_user.email,
         "phone": current_user.phone
@@ -118,11 +119,19 @@ def get_users(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    users = db.query(User).all()
+    sent = db.query(Message.receiver_id)\
+             .filter(Message.sender_id == current_user.id)
+
+    received = db.query(Message.sender_id)\
+                 .filter(Message.receiver_id == current_user.id)
+
+    user_ids = {u[0] for u in sent.union(received).all()}
+
+    users = db.query(User).filter(User.id.in_(user_ids)).all()
+
     return [
         {"id": u.id, "nickname": u.nickname}
         for u in users
-        if u.id != current_user.id
     ]
 
 # =========================

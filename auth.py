@@ -65,6 +65,11 @@ def send_email_verification(email: str, code: str):
 
 @router.post("/send-code")
 async def send_code(email: str = Form(...), db: Session = Depends(get_db)):
+
+    # 이메일 중복 체크
+    if db.query(User).filter(User.email == email).first():
+        raise HTTPException(status_code=400, detail="이미 사용중인 이메일입니다.")
+
     code = generate_code()
 
     verification = EmailVerification(email=email, code=code)
@@ -89,6 +94,7 @@ def verify_code(email: str = Form(...), code: str = Form(...), db: Session = Dep
 # ---------------- 회원가입 ----------------
 @router.post("/register")
 def register(
+    name: str = Form(...),
     nickname: str = Form(...),
     email: str = Form(...),
     phone: str = Form(...),
@@ -112,6 +118,7 @@ def register(
     hashed_password = pwd_context.hash(password)
 
     user = User(
+        name=name,
         nickname=nickname,
         email=email,
         phone=phone,
